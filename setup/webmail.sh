@@ -99,8 +99,15 @@ fi
 # ### Configuring Roundcube
 
 # Generate a secret key of PHP-string-safe characters appropriate
-# for the cipher algorithm selected below.
-SECRET_KEY=$(dd if=/dev/urandom bs=1 count=32 2>/dev/null | base64 | sed s/=//g)
+# for the cipher algorithm selected below. Keep it across setup runs:
+# regenerating it on every run logged everyone out of "stay logged in".
+mkdir -p "$STORAGE_ROOT/mail/roundcube"
+RCM_SECRET_KEY_FILE=$STORAGE_ROOT/mail/roundcube/des_key
+if [ ! -s "$RCM_SECRET_KEY_FILE" ]; then
+	(umask 077; dd if=/dev/urandom bs=1 count=32 2>/dev/null | base64 | sed s/=//g > "$RCM_SECRET_KEY_FILE")
+fi
+chmod 600 "$RCM_SECRET_KEY_FILE"
+SECRET_KEY=$(cat "$RCM_SECRET_KEY_FILE")
 
 # Create a configuration file.
 #
