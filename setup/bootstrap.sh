@@ -1,10 +1,21 @@
 #!/bin/bash
 #########################################################
-# This script is intended to be run like this:
+# This is the asdz/mailinabox fork of Mail-in-a-Box.
 #
-#   curl https://mailinabox.email/setup.sh | sudo bash
+# Install or update by running, as root:
 #
+#   curl -fsSL https://raw.githubusercontent.com/asdz/mailinabox/main/setup/bootstrap.sh | sudo bash
+#
+# or, on a box that already has the fork checked out:
+#
+#   sudo ~/mailinabox/setup/bootstrap.sh
+#
+# Releases are tagged vNN.P, where NN is the upstream Mail-in-a-Box release
+# the fork is based on and P is the fork's patch number.
 #########################################################
+
+# Where the fork lives. Override with SOURCE=... for testing.
+FORK_SOURCE=https://github.com/asdz/mailinabox
 
 if [ -z "$TAG" ]; then
 	# If a version to install isn't explicitly given as an environment
@@ -23,7 +34,7 @@ if [ -z "$TAG" ]; then
 	if [ "$UBUNTU_VERSION" == "Ubuntu 22.04 LTS" ]; then
 		# This machine is running Ubuntu 22.04, which is supported by
 		# Mail-in-a-Box versions 60 and later.
-		TAG=v78
+		TAG=v78.1
 	elif [ "$UBUNTU_VERSION" == "Ubuntu 18.04 LTS" ]; then
 		# This machine is running Ubuntu 18.04, which is supported by
 		# Mail-in-a-Box versions 0.40 through 5x.
@@ -50,6 +61,10 @@ if [[ $EUID -ne 0 ]]; then
 	exit 1
 fi
 
+if [ -z "${SOURCE:-}" ]; then
+	SOURCE=$FORK_SOURCE
+fi
+
 # Clone the Mail-in-a-Box repository if it doesn't exist.
 if [ ! -d "$HOME/mailinabox" ]; then
 	if [ ! -f /usr/bin/git ]; then
@@ -59,11 +74,7 @@ if [ ! -d "$HOME/mailinabox" ]; then
 		echo
 	fi
 
-	if [ "$SOURCE" == "" ]; then
-		SOURCE=https://github.com/mail-in-a-box/mailinabox
-	fi
-
-	echo "Downloading Mail-in-a-Box $TAG. . ."
+	echo "Downloading Mail-in-a-Box $TAG from $SOURCE . . ."
 	git clone \
 		-b "$TAG" --depth 1 \
 		"$SOURCE" \
@@ -76,10 +87,40 @@ fi
 # Change directory to it.
 cd "$HOME/mailinabox" || exit
 
+# Boxes installed from upstream Mail-in-a-Box still fetch from upstream.
+# Point them at the fork.
+if [ "$(git remote get-url origin 2>/dev/null)" != "$SOURCE" ]; then
+	echo "Switching update source to $SOURCE . . ."
+	git remote set-url origin "$SOURCE"
+fi
+
 # Update it.
 if [ "$TAG" != "$(git describe --always)" ]; then
 	echo "Updating Mail-in-a-Box to $TAG . . ."
+
+	# Remember who may sign releases *before* fetching the new code, so a
+	# tampered release can't vouch for itself. The list is carried in the
+	# repository (conf/allowed_signers), so it is trusted on first install
+	# and enforced on every update after that.
+	SIGNERS=$(mktemp)
+	if [ -s conf/allowed_signers ]; then
+		cp conf/allowed_signers "$SIGNERS"
+	fi
+
 	git fetch --depth 1 --force --prune origin tag "$TAG"
+
+	if [ -s "$SIGNERS" ]; then
+		if ! git -c gpg.format=ssh -c gpg.ssh.allowedSignersFile="$SIGNERS" verify-tag "$TAG" 2> /dev/null; then
+			echo "Release $TAG is not signed by a key in conf/allowed_signers. Not updating."
+			rm -f "$SIGNERS"
+			exit 1
+		fi
+		echo "Release $TAG signature verified."
+	else
+		echo "Warning: no conf/allowed_signers yet, so release $TAG was not signature-checked."
+	fi
+	rm -f "$SIGNERS"
+
 	if ! git checkout -q "$TAG"; then
 		echo "Update failed. Did you modify something in $PWD?"
 		exit 1
