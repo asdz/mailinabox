@@ -38,15 +38,15 @@ nextcloud_hash=9f30c01a021c2e5a9e7baff119955afb3c552ebc
 
 # Always ensure the versions are supported, see https://apps.nextcloud.com/apps/contacts
 contacts_ver=5.5.4
-contacts_hash=c4e3f2183a0088b829f8aa1b3af1f87c9a4c46a2
+contacts_hash=178aa6ec0b06d6bd72ff8eb87ac32ff267e97ccd93246b1eae1b5bb5263a61b0
 
 # Always ensure the versions are supported, see https://apps.nextcloud.com/apps/calendar
 calendar_ver=4.7.20
-calendar_hash=12d876904e227156e39ca4335b18481b42a6d00f
+calendar_hash=f62b43853dfc1fc971b4ffe5992cedc499e8ed7dc118265cfdfe8c1531d4a912
 
 # Always ensure the versions are supported, see https://apps.nextcloud.com/apps/user_external
 user_external_ver=3.4.0
-user_external_hash=7f9d8f4dd6adb85a0e3d7622d85eeb7bfe53f3b4
+user_external_hash=5a7fbed5da3cbe335f753027b662179c92c17fb37babc875e9e285d8a13d47f3
 
 # Developer advice (test plan)
 # ----------------------------
