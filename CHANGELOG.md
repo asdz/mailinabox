@@ -1,6 +1,36 @@
 CHANGELOG
 =========
 
+Version 78.1 (asdz fork, unreleased)
+------------------------------------
+
+First release of the asdz/mailinabox fork, based on upstream v78.
+
+Security:
+
+* The web server user (Roundcube/Nextcloud) can no longer write the user
+  database. Roundcube password changes go through a new local-only
+  management endpoint that checks the current password.
+* doveadm receives passwords on stdin instead of the command line.
+* fail2ban: 10 failed logins per 10 minutes, then a 1 hour ban (was 20 per
+  30 seconds).
+* rsync backups pin the backup host's SSH key on first use.
+* Custom DNS values can't contain line breaks; zones nsd rejects are
+  reported in the control panel.
+* Python packages for the management daemon are pinned and hash-checked;
+  cryptography 37.0.2 -> 50.0.2; jQuery 2.2.4 -> 3.7.1.
+* Downloads are checked with SHA256 where available.
+* PHP comes from packages.sury.org (ppa:ondrej/php is being retired).
+
+Changes:
+
+* Z-Push (Exchange ActiveSync) is removed. Use IMAP/SMTP for mail and
+  CalDAV/CardDAV for contacts and calendars.
+* Updates come from github.com/asdz/mailinabox, and release tags are
+  verified against conf/allowed_signers once it lists a key.
+* Roundcube's encryption key is kept across setup runs, so "stay logged in"
+  survives updates.
+
 Version 78 (October 22, 2026)
 -----------------------------
 

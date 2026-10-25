@@ -103,8 +103,8 @@ if [ "$TAG" != "$(git describe --always)" ]; then
 	# repository (conf/allowed_signers), so it is trusted on first install
 	# and enforced on every update after that.
 	SIGNERS=$(mktemp)
-	if [ -s conf/allowed_signers ]; then
-		cp conf/allowed_signers "$SIGNERS"
+	if [ -f conf/allowed_signers ]; then
+		grep -Ev '^[[:space:]]*(#|$)' conf/allowed_signers > "$SIGNERS" || true
 	fi
 
 	git fetch --depth 1 --force --prune origin tag "$TAG"
