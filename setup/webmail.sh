@@ -183,22 +183,30 @@ sudo -u www-data touch /var/log/roundcubemail/errors.log
 cp ${RCM_PLUGIN_DIR}/password/config.inc.php.dist \
 	${RCM_PLUGIN_DIR}/password/config.inc.php
 
+# Password changes go through the management daemon's local-only
+# /mail/users/password/self endpoint, which checks the current password and
+# writes the user database itself. The web server user (www-data) therefore
+# needs no write access to users.sqlite: a compromise of Roundcube or
+# Nextcloud must not be able to change other users' passwords or privileges.
 tools/editconf.py ${RCM_PLUGIN_DIR}/password/config.inc.php \
+	"\$config['password_driver']='httpapi';" \
 	"\$config['password_minimum_length']=8;" \
-	"\$config['password_db_dsn']='sqlite:///$STORAGE_ROOT/mail/users.sqlite';" \
-	"\$config['password_query']='UPDATE users SET password=%P WHERE email=%u';" \
-	"\$config['password_algorithm']='sha512-crypt';" \
-	"\$config['password_algorithm_prefix']='{SHA512-CRYPT}';"
+	"\$config['password_httpapi_url']='http://127.0.0.1:10222/mail/users/password/self';" \
+	"\$config['password_httpapi_method']='POST';" \
+	"\$config['password_httpapi_var_user']='user';" \
+	"\$config['password_httpapi_var_curpass']='curpass';" \
+	"\$config['password_httpapi_var_newpass']='newpass';" \
+	"\$config['password_httpapi_expect']='/^OK\$/';"
 
-# so PHP can use doveadm, for the password changing plugin
-usermod -a -G dovecot www-data
-
-# set permissions so that PHP can use users.sqlite
-# could use dovecot instead of www-data, but not sure it matters
-chown root:www-data "$STORAGE_ROOT/mail"
-chmod 775 "$STORAGE_ROOT/mail"
-chown root:www-data "$STORAGE_ROOT/mail/users.sqlite"
-chmod 664 "$STORAGE_ROOT/mail/users.sqlite"
+# Earlier versions let www-data write the user database and use doveadm.
+# Take that access away again on existing boxes.
+if id -nG www-data | grep -qw dovecot; then
+	gpasswd -d www-data dovecot > /dev/null
+fi
+chown root:root "$STORAGE_ROOT/mail"
+chmod 755 "$STORAGE_ROOT/mail"
+chown root:root "$STORAGE_ROOT/mail/users.sqlite"
+chmod 644 "$STORAGE_ROOT/mail/users.sqlite"
 
 # Fix Carddav permissions:
 chown -f -R root:www-data ${RCM_PLUGIN_DIR}/carddav

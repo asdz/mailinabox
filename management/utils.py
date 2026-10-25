@@ -107,6 +107,25 @@ def sort_email_addresses(email_addresses, env):
     ret.extend(sorted(email_addresses)) # whatever is left
     return ret
 
+def doveadm_pw(args, password, repeat=1):
+    # Run `doveadm pw` with the password on stdin rather than on the command
+    # line, where any local process could read it from /proc/<pid>/cmdline.
+    # doveadm reads the password from /dev/tty when it can, so run it in a new
+    # session without a controlling terminal to make it fall back to stdin.
+    # Raises subprocess.CalledProcessError if doveadm fails (e.g. the password
+    # doesn't match when testing with -t).
+    import subprocess
+    if "\n" in password or "\r" in password:
+        raise ValueError("Passwords cannot contain line breaks.")
+    p = subprocess.run(
+        ["/usr/bin/doveadm", "pw", *args],
+        input=((password + "\n") * repeat).encode("utf8"),
+        capture_output=True,
+        start_new_session=True,
+        env={ "PATH": "/sbin:/bin:/usr/sbin:/usr/bin" },
+        check=True)
+    return p.stdout.decode("utf8")
+
 def shell(method, cmd_args, env=None, capture_stderr=False, return_bytes=False, trap=False, input=None):
     # A safe way to execute processes.
     # Some processes like apt-get require being given a sane PATH.
