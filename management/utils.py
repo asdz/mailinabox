@@ -116,7 +116,8 @@ def doveadm_pw(args, password, repeat=1):
     # doesn't match when testing with -t).
     import subprocess
     if "\n" in password or "\r" in password:
-        raise ValueError("Passwords cannot contain line breaks.")
+        msg = "Passwords cannot contain line breaks."
+        raise ValueError(msg)
     p = subprocess.run(
         ["/usr/bin/doveadm", "pw", *args],
         input=((password + "\n") * repeat).encode("utf8"),

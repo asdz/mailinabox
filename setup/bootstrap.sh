@@ -110,7 +110,7 @@ if [ "$TAG" != "$(git describe --always)" ]; then
 	git fetch --depth 1 --force --prune origin tag "$TAG"
 
 	if [ -s "$SIGNERS" ]; then
-		if ! git -c gpg.format=ssh -c gpg.ssh.allowedSignersFile="$SIGNERS" verify-tag "$TAG" 2> /dev/null; then
+		if ! git -c gpg.format=ssh -c gpg.ssh.program=ssh-keygen -c gpg.ssh.allowedSignersFile="$SIGNERS" verify-tag "$TAG" 2> /dev/null; then
 			echo "Release $TAG is not signed by a key in conf/allowed_signers. Not updating."
 			rm -f "$SIGNERS"
 			exit 1
