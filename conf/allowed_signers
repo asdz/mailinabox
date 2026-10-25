@@ -1,0 +1,14 @@
+# SSH keys allowed to sign release tags of this fork.
+#
+# setup/bootstrap.sh refuses to update to a tag that isn't signed by one of
+# these keys. The list is read from the version already installed on the box,
+# before the new tag is fetched, so a tampered release can't add its own key.
+# While this file has no keys, updates only print a warning.
+#
+# One key per line, in ssh-keygen's allowed-signers format:
+#   you@example.com namespaces="git" ssh-ed25519 AAAA...
+#
+# To sign a release:
+#   git config gpg.format ssh
+#   git config user.signingkey ~/.ssh/id_ed25519.pub
+#   git tag -s v78.1 -m v78.1

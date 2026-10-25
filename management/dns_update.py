@@ -107,6 +107,18 @@ def do_dns_update(env, force=False):
 		except:
 			shell('check_call', ["/usr/sbin/service", "nsd", "restart"])
 
+	# nsd silently refuses to serve a zone it can't parse and keeps serving
+	# the old one (or nothing). Check each changed zone so problems show up
+	# in the control panel instead of as a surprise outage.
+	zone_errors = []
+	for domain, zonefile in zonefiles:
+		if domain not in updated_domains:
+			continue
+		code, out = shell('check_output', ["/usr/sbin/nsd-checkzone", domain, "/etc/nsd/zones/" + zonefile],
+			capture_stderr=True, trap=True)
+		if code != 0:
+			zone_errors.append(f"ERROR: nsd rejected the zone for {domain}, so it is not being served correctly:\n{out.strip()}\n")
+
 	# Write the OpenDKIM configuration tables for all of the mail domains.
 	from mailconfig import get_mail_domains
 	if write_opendkim_tables(get_mail_domains(env), env):
@@ -123,7 +135,7 @@ def do_dns_update(env, force=False):
 	if len(updated_domains) == 0:
 		# if nothing was updated (except maybe OpenDKIM's files), don't show any output
 		return ""
-	return "updated DNS: " + ",".join(updated_domains) + "\n"
+	return "updated DNS: " + ",".join(updated_domains) + "\n" + "".join(zone_errors)
 
 ########################################################################
 
@@ -258,7 +270,7 @@ def build_zone(domain, domain_properties, additional_records, env, is_zone=True)
 		if domain.startswith("www."): a_expl = f"Optional. Sets the IP address that {domain} resolves to so that the box can provide a redirect to the parent domain."
 		if domain.startswith("mta-sts."): a_expl = "Optional. MTA-STS Policy Host serving /.well-known/mta-sts.txt."
 		if domain.startswith("autoconfig."): a_expl = "Provides email configuration autodiscovery support for Thunderbird Autoconfig."
-		if domain.startswith("autodiscover."): a_expl = "Provides email configuration autodiscovery support for Z-Push ActiveSync Autodiscover."
+		if domain.startswith("autodiscover."): a_expl = "Provides email configuration autodiscovery support for Microsoft Autodiscover clients."
 	defaults = [
 		(None,  "A",    env["PUBLIC_IP"], a_expl),
 		(None,  "AAAA", env.get('PUBLIC_IPV6'), f"Optional. Sets the IPv6 address that {domain} resolves to, e.g. for web hosting. (It is not necessary for receiving mail on this domain.)"),
@@ -902,6 +914,11 @@ def set_custom_dns_record(qname, rtype, value, action, env):
 
 	# validate rtype
 	rtype = rtype.upper()
+	if value is not None and re.search(r"[\x00-\x1f\x7f]", value):
+		# Line breaks and other control characters would let a value spill
+		# into the next line of the zone file and break the whole zone.
+		msg = "Invalid value: it cannot contain line breaks or control characters."
+		raise ValueError(msg)
 	if value is not None and qname != "_secondary_nameserver":
 		if not re.search(DOMAIN_RE, qname):
 			msg = "Invalid name."

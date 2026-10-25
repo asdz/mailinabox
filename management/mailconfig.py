@@ -384,7 +384,7 @@ def hash_password(pw):
 	# Turn the plain password into a Dovecot-format hashed password, meaning
 	# something like "{SCHEME}hashedpassworddata".
 	# http://wiki2.dovecot.org/Authentication/PasswordSchemes
-	return utils.shell('check_output', ["/usr/bin/doveadm", "pw", "-s", "SHA512-CRYPT", "-p", pw]).strip()
+	return utils.doveadm_pw(["-s", "SHA512-CRYPT"], pw, repeat=2).strip()
 
 
 def get_mail_quota(email, env):
@@ -713,6 +713,9 @@ def validate_password(pw):
 		raise ValueError(msg)
 	if len(pw) < 8:
 		msg = "Passwords must be at least eight characters."
+		raise ValueError(msg)
+	if "\n" in pw or "\r" in pw:
+		msg = "Passwords cannot contain line breaks."
 		raise ValueError(msg)
 
 if __name__ == "__main__":

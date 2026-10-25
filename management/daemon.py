@@ -101,10 +101,6 @@ def authorized_personnel_only(viewfunc):
 
 	return newview
 
-@app.errorhandler(401)
-def unauthorized(error):
-	return auth_service.make_unauthorized_response()
-
 def json_response(data, status=200):
 	return Response(json.dumps(data, indent=2, sort_keys=True)+'\n', status=status, mimetype='application/json')
 
@@ -222,6 +218,29 @@ def mail_users_quota():
 def mail_users_password():
 	try:
 		return set_mail_password(request.form.get('email', ''), request.form.get('password', ''), env)
+	except ValueError as e:
+		return (str(e), 400)
+
+@app.route('/mail/users/password/self', methods=['POST'])
+def mail_users_password_self():
+	# Lets a user change their own password by proving they know the current
+	# one. Roundcube's password plugin calls this (httpapi driver) so that the
+	# web server user doesn't need write access to the user database.
+	#
+	# Only answer requests made directly on this machine. Requests from the
+	# internet come through nginx, which always sets X-Forwarded-For.
+	if "X-Forwarded-For" in request.headers or request.remote_addr not in {"127.0.0.1", "::1"}:
+		return ("Not found.\n", 404)
+
+	email = request.form.get('user', '')
+	try:
+		auth_service.verify_password(email, request.form.get('curpass', ''), env)
+	except ValueError as e:
+		log_failed_login(request)
+		return (str(e), 403)
+
+	try:
+		return set_mail_password(email, request.form.get('newpass', ''), env)
 	except ValueError as e:
 		return (str(e), 400)
 

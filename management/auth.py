@@ -58,7 +58,7 @@ class AuthService:
 
 		# If user passed the system API key, grant administrative privs. This key
 		# is not associated with a user.
-		if username == self.key and not login_only:
+		if hmac.compare_digest(username.encode('utf8'), self.key.encode('ascii')) and not login_only:
 			return (None, ["admin"])
 
 		# If the password corresponds with a session token for the user, grant access for that user.
@@ -99,7 +99,17 @@ class AuthService:
 		# On login failure, raises a ValueError with a login error message. On
 		# success, nothing is returned.
 
-		# Authenticate.
+		self.verify_password(email, pw, env)
+
+		# If MFA is enabled, check that MFA passes.
+		status, hints = validate_auth_mfa(email, request, env)
+		if not status:
+			# Login valid. Hints may have more info.
+			raise ValueError(",".join(hints))
+
+	def verify_password(self, email, pw, env):
+		# Check a user's password, ignoring MFA. On failure, raises a ValueError
+		# with a login error message. On success, nothing is returned.
 		try:
 			# Get the hashed password of the user. Raise a ValueError if the
 			# email address does not correspond to a user. But wrap it in the
@@ -108,23 +118,12 @@ class AuthService:
 			pw_hash = get_mail_password(email, env)
 
 			# Use 'doveadm pw' to check credentials. doveadm will return
-			# a non-zero exit status if the credentials are no good,
-			# and check_call will raise an exception in that case.
-			utils.shell('check_call', [
-				"/usr/bin/doveadm", "pw",
-				"-p", pw,
-				"-t", pw_hash,
-				])
-		except:
+			# a non-zero exit status if the credentials are no good.
+			utils.doveadm_pw(["-t", pw_hash], pw)
+		except Exception:
 			# Login failed.
 			msg = "Incorrect email address or password."
 			raise ValueError(msg)
-
-		# If MFA is enabled, check that MFA passes.
-		status, hints = validate_auth_mfa(email, request, env)
-		if not status:
-			# Login valid. Hints may have more info.
-			raise ValueError(",".join(hints))
 
 	def create_user_password_state_token(self, email, env):
 		# Create a token that changes if the user's password or MFA options change

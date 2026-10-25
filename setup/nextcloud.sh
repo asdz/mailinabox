@@ -19,7 +19,8 @@ echo "Installing Nextcloud (contacts/calendar)..."
 #   for whether it supports the version of PHP available on this machine.
 # * Since Nextcloud only supports upgrades from consecutive major versions,
 #   we automatically install intermediate versions as needed.
-# * The hash is the SHA1 hash of the ZIP package, which you can find by just running this script and
+# * The hash is the SHA256 (or, for older pins, SHA1) hash of the ZIP package. Nextcloud publishes
+#   it next to the release as <zip URL>.sha256; you can also find it by just running this script and
 #   copying it from the error message when it doesn't match what is below.
 nextcloud_ver=27.1.11
 nextcloud_hash=9f30c01a021c2e5a9e7baff119955afb3c552ebc
@@ -31,21 +32,21 @@ nextcloud_hash=9f30c01a021c2e5a9e7baff119955afb3c552ebc
 #   https://github.com/nextcloud-releases/calendar/tags
 #   https://github.com/nextcloud/user_external/tags
 #
-# * For these three packages, contact, calendar and user_external, the hash is the SHA1 hash of
-# the release tarball (from the releases/download URL, not the source archive), which you can
-# find by running: curl -sL <url> | sha1sum
+# * For these three packages, contact, calendar and user_external, the hash is the SHA256 (or, for
+# older pins, SHA1) hash of the release tarball (from the releases/download URL, not the source
+# archive), which you can find by running: curl -sL <url> | sha256sum
 
 # Always ensure the versions are supported, see https://apps.nextcloud.com/apps/contacts
 contacts_ver=5.5.4
-contacts_hash=c4e3f2183a0088b829f8aa1b3af1f87c9a4c46a2
+contacts_hash=178aa6ec0b06d6bd72ff8eb87ac32ff267e97ccd93246b1eae1b5bb5263a61b0
 
 # Always ensure the versions are supported, see https://apps.nextcloud.com/apps/calendar
 calendar_ver=4.7.20
-calendar_hash=12d876904e227156e39ca4335b18481b42a6d00f
+calendar_hash=f62b43853dfc1fc971b4ffe5992cedc499e8ed7dc118265cfdfe8c1531d4a912
 
 # Always ensure the versions are supported, see https://apps.nextcloud.com/apps/user_external
 user_external_ver=3.4.0
-user_external_hash=7f9d8f4dd6adb85a0e3d7622d85eeb7bfe53f3b4
+user_external_hash=5a7fbed5da3cbe335f753027b662179c92c17fb37babc875e9e285d8a13d47f3
 
 # Developer advice (test plan)
 # ----------------------------

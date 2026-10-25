@@ -980,12 +980,12 @@ def what_version_is_this(env):
 	return shell("check_output", ["/usr/bin/git", "describe", "--always", "--abbrev=0"], env={"GIT_DIR": os.path.join(miab_dir, '.git')}).strip()
 
 def get_latest_miab_version():
-	# This pings https://mailinabox.email/setup.sh and extracts the tag named in
-	# the script to determine the current product version.
+	# Reads the fork's bootstrap script and extracts the tag named in it
+	# to determine the current product version.
     from urllib.request import urlopen, HTTPError, URLError
 
     try:
-        return re.search(b'TAG=(.*)', urlopen("https://mailinabox.email/setup.sh?ping=1", timeout=5).read()).group(1).decode("utf8")
+        return re.search(b'TAG=(.*)', urlopen("https://raw.githubusercontent.com/asdz/mailinabox/main/setup/bootstrap.sh", timeout=5).read()).group(1).decode("utf8")
     except (TimeoutError, HTTPError, URLError):
         return None
 
@@ -1007,7 +1007,7 @@ def check_miab_version(env, output):
 		elif latest_ver is None:
 			output.print_error(f"Latest Mail-in-a-Box version could not be determined. You are running version {this_ver}.")
 		else:
-			output.print_error(f"A new version of Mail-in-a-Box is available. You are running version {this_ver}. The latest version is {latest_ver}. For upgrade instructions, see https://mailinabox.email. ")
+			output.print_error(f"A new version of Mail-in-a-Box is available. You are running version {this_ver}. The latest version is {latest_ver}. To upgrade, run: sudo ~/mailinabox/setup/bootstrap.sh")
 
 def run_and_output_changes(env, pool):
 	import json

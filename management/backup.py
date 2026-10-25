@@ -233,7 +233,7 @@ def get_duplicity_additional_args(env):
 
 		return [
 			f"--ssh-options='-i /root/.ssh/id_rsa_miab -p {port}'",
-			f"--rsync-options='-e \"/usr/bin/ssh -oStrictHostKeyChecking=no -oBatchMode=yes -p {port} -i /root/.ssh/id_rsa_miab\"'",
+			f"--rsync-options='-e \"/usr/bin/ssh -oStrictHostKeyChecking=accept-new -oBatchMode=yes -p {port} -i /root/.ssh/id_rsa_miab\"'",
 		]
 	if get_target_type(config) == 's3':
 		# See note about hostname in get_duplicity_target_url.
@@ -469,7 +469,7 @@ def list_target_files(config):
 
 		rsync_command = [ 'rsync',
 					'-e',
-					f'/usr/bin/ssh -i /root/.ssh/id_rsa_miab -oStrictHostKeyChecking=no -oBatchMode=yes -p {port}',
+					f'/usr/bin/ssh -i /root/.ssh/id_rsa_miab -oStrictHostKeyChecking=accept-new -oBatchMode=yes -p {port}',
 					'--list-only',
 					'-r',
 					rsync_target.format(

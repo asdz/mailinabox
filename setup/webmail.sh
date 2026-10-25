@@ -37,11 +37,11 @@ apt_install \
 # The easiest way to get the package hashes is to run this script and get the hash from
 # the error message.
 VERSION=1.6.20
-HASH=15c70410af3071219aae209ba89e2ff1dacb1ab5
+HASH=46919c70c85609b57038903c4ecc4e1d7fa4e14c535fe5b14192d778dcd4a1ee
 PERSISTENT_LOGIN_VERSION=bde7b6840c7d91de627ea14e81cf4133cbb3c07a # version 5.3
 HTML5_NOTIFIER_VERSION=68d9ca194212e15b3c7225eb6085dbcf02fd13d7 # version 0.6.4+
 CARDDAV_VERSION=4.4.3
-CARDDAV_HASH=74f8ba7aee33e78beb9de07f7f44b81f6071b644
+CARDDAV_HASH=fd36e97f6dd88fa13cec16a6423ea02596a9ac4d11002f19b3eced52feaffdf2
 
 UPDATE_KEY=$VERSION:$PERSISTENT_LOGIN_VERSION:$HTML5_NOTIFIER_VERSION:$CARDDAV_VERSION
 
@@ -99,8 +99,15 @@ fi
 # ### Configuring Roundcube
 
 # Generate a secret key of PHP-string-safe characters appropriate
-# for the cipher algorithm selected below.
-SECRET_KEY=$(dd if=/dev/urandom bs=1 count=32 2>/dev/null | base64 | sed s/=//g)
+# for the cipher algorithm selected below. Keep it across setup runs:
+# regenerating it on every run logged everyone out of "stay logged in".
+mkdir -p "$STORAGE_ROOT/mail/roundcube"
+RCM_SECRET_KEY_FILE=$STORAGE_ROOT/mail/roundcube/des_key
+if [ ! -s "$RCM_SECRET_KEY_FILE" ]; then
+	(umask 077; dd if=/dev/urandom bs=1 count=32 2>/dev/null | base64 | sed s/=//g > "$RCM_SECRET_KEY_FILE")
+fi
+chmod 600 "$RCM_SECRET_KEY_FILE"
+SECRET_KEY=$(cat "$RCM_SECRET_KEY_FILE")
 
 # Create a configuration file.
 #
@@ -183,22 +190,30 @@ sudo -u www-data touch /var/log/roundcubemail/errors.log
 cp ${RCM_PLUGIN_DIR}/password/config.inc.php.dist \
 	${RCM_PLUGIN_DIR}/password/config.inc.php
 
+# Password changes go through the management daemon's local-only
+# /mail/users/password/self endpoint, which checks the current password and
+# writes the user database itself. The web server user (www-data) therefore
+# needs no write access to users.sqlite: a compromise of Roundcube or
+# Nextcloud must not be able to change other users' passwords or privileges.
 tools/editconf.py ${RCM_PLUGIN_DIR}/password/config.inc.php \
+	"\$config['password_driver']='httpapi';" \
 	"\$config['password_minimum_length']=8;" \
-	"\$config['password_db_dsn']='sqlite:///$STORAGE_ROOT/mail/users.sqlite';" \
-	"\$config['password_query']='UPDATE users SET password=%P WHERE email=%u';" \
-	"\$config['password_algorithm']='sha512-crypt';" \
-	"\$config['password_algorithm_prefix']='{SHA512-CRYPT}';"
+	"\$config['password_httpapi_url']='http://127.0.0.1:10222/mail/users/password/self';" \
+	"\$config['password_httpapi_method']='POST';" \
+	"\$config['password_httpapi_var_user']='user';" \
+	"\$config['password_httpapi_var_curpass']='curpass';" \
+	"\$config['password_httpapi_var_newpass']='newpass';" \
+	"\$config['password_httpapi_expect']='/^OK\$/';"
 
-# so PHP can use doveadm, for the password changing plugin
-usermod -a -G dovecot www-data
-
-# set permissions so that PHP can use users.sqlite
-# could use dovecot instead of www-data, but not sure it matters
-chown root:www-data "$STORAGE_ROOT/mail"
-chmod 775 "$STORAGE_ROOT/mail"
-chown root:www-data "$STORAGE_ROOT/mail/users.sqlite"
-chmod 664 "$STORAGE_ROOT/mail/users.sqlite"
+# Earlier versions let www-data write the user database and use doveadm.
+# Take that access away again on existing boxes.
+if id -nG www-data | grep -qw dovecot; then
+	gpasswd -d www-data dovecot > /dev/null
+fi
+chown root:root "$STORAGE_ROOT/mail"
+chmod 755 "$STORAGE_ROOT/mail"
+chown root:root "$STORAGE_ROOT/mail/users.sqlite"
+chmod 644 "$STORAGE_ROOT/mail/users.sqlite"
 
 # Fix Carddav permissions:
 chown -f -R root:www-data ${RCM_PLUGIN_DIR}/carddav
